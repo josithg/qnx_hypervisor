@@ -231,3 +231,4 @@ Note: the scripts above assume that you have located your virtual devices at par
 Starting shell ...
 [armv8 guest QNX 8.x guest 1]%
 ```
+credits: [john@qnx gitlab](https://gitlab.com/qnx/hypervisor/getting-started)
