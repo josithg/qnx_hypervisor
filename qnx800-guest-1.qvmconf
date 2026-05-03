@@ -1,0 +1,95 @@
+# An example guest configuration on an ARM QNX Hypervisor system. This would be used on the Hypervisor host
+# to run such a guest.
+
+
+system qnx-guest-1
+
+ram 0x80000000,512M
+
+# Add a 'cpu' for each virtual CPU that the guest will have
+#cpu
+cpu
+
+# Use 'runmask' after 'cpu' entries to fix the virtual CPUs to host physical CPUs
+#runmask 0
+
+# This IFS is found in the images/ folder of the guest BSP.
+# Here, qvm will look for this IFS in your current working folder.
+load qnx800-guest-1.ifs
+
+
+################
+#  MMIO vs PCI virtual devices
+#
+#  - Note that on systems without PCI services, MMIO mode is used instead of PCI
+#  - This means we need to specify the interrupt and location in memory of the device (with loc and intr),
+#  that normally would be provided automatically in PCI config space.
+#  - The address and interrupt # you choose is somewhat arbitrary, but they must not be
+#  in use already.
+#  - The address and interrupt you choose will also need to be given to the driver in the guest so it can properly
+#  make use of the device.
+#  - If PCI is available on the guest, you simply remove/comment-out the 'loc' (address) and 'intr' (interrupt) options on the
+#  vdev.
+#
+# If you are configuring PCI devices that have MSI capability, you need to configure the GIC appropriately (see documentation for details, values chosen depend on what you have set up in the rest of the guest config), e.g.:
+#
+#    vdev gic msi 0x30000000,0x50,0x100
+################
+
+#UART
+vdev pl011
+        # Since we are using virtio-console, point the PL011 at qvm stdout, so we can still see
+        # startup driver output (startup uses the PL011)
+        hostdev >-
+        loc 0x1c090000
+        intr gic:37
+
+# Use virtio as the main console
+vdev virtio-console
+        loc 0x20000000
+        intr gic:42
+
+# Shared memory virtual device
+vdev shmem
+        loc 0x1c050000 intr
+        gic:38
+
+#An example network device that connects to a 2nd guest with system name 'qnx-guest-2'
+vdev virtio-net
+        loc 0x20040000
+        intr gic:43
+        peer /dev/qvm/qnx-guest-2/guest_to_guest
+        #Refer to documentation to choose an appropriate value here
+        peerfeats 0x00007fc3 # E.g. Turn on all allowed virtio feature bits
+	#Name required for virtio-net
+        name guest_to_guest
+
+#An example network device that connects to the host.
+# To have more than 1 guest with networking
+# you need to create additional vdevpeer devices
+vdev virtio-net
+        loc 0x1c0c0000
+        intr gic:40
+        peer /dev/vdevpeers/vp0
+        #Refer to documentation to choose an appropriate value here
+        peerfeats 0x00007fc3 # E.g. Turn on all allowed virtio feature bits
+	#Name required for virtio-net
+        name guest_to_host
+
+#An example block device. Note that this file has to be created somewhere.
+# In this case, the file is created using devb-ram in the host
+vdev virtio-blk
+        loc 0x1c0d0000
+        intr gic:41
+        hostdev /dev/qvmdisk0
+	#Name given here so that pidin threads output will be easier to read
+	name virtio-blk_qvmdisk0
+
+
+#An example SP805 watchdog (to use see /scripts/watchdog-start.sh in guest)
+vdev wdt-sp805
+        loc 0x1c0f0000
+
+# Guest SMMU
+vdev smmu
+
