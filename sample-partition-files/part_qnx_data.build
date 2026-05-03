@@ -1,0 +1,48 @@
+# Set the size of the filesystem image in disk sectors (not filesystem blocks)
+# The size must be a multiple of 8 and can be any value that can fit on the media
+# Set the QNX6 storage partition to 400MB in this example
+
+#
+# ***SECTORS MODIFIED BY BUILD
+#
+[num_sectors=10485760]
+
+# In QNX Neutrino 6, inodes have to be pre-allocated at format time
+[num_inodes=50000]
+
+# The blocksize is typically set based on how the filesystem is expected to be used
+# If the filesystem will contain many very small files, reduce the specified blksize,
+# because each file occupies a whole number of blocks. Default to 4KiB as that size
+# ensures everything is 4KiB aligned and may work better with some solid-state
+# devices.
+[blksize=4096]
+
+# Optionally, include any directory in the filesystem image
+# Add /etc/ssh to save the SSH keys
+[type=dir]/etc/ssh
+# Add /var/run for dhcpcd
+[type=dir]/var/run
+
+# Optionally, include any other files you want in the filesystem image
+# For example, add an user's board startup script
+/scripts/board_startup.sh={
+#!/bin/sh
+
+echo "Running user's startup script ..."
+mount -tdos /dev/sd0t12 /dos
+}
+
+    
+    /etc/ssh/sshd_config = {
+    # Allow root login since hypervisor guests can only be launched by root in some cases
+    PermitRootLogin yes
+    
+    # The default is to check both .ssh/authorized_keys and .ssh/authorized_keys2
+    # but this is overridden so installations will only check .ssh/authorized_keys
+    AuthorizedKeysFile      .ssh/authorized_keys
+    
+    # override default of no subsystems
+    Subsystem       sftp    /usr/libexec/sftp-server
+    }
+
+[-followlink] /guests/ = ./guests/
